@@ -31,7 +31,7 @@ function install_libxc {
   cd libxc-6.2.2
   rm -fr build
   mkdir build && cd build
-  cmake -DCMAKE_C_COMPILER=cc -DCMAKE_C_FLAGS="-O2 -fPIC" -DCMAKE_CXX_COMPILER=CC -DCMAKE_CXX_FLAGS="-O2 -fPIC" -DCMAKE_INSTALL_PREFIX=$INST -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF ..
+  cmake -DCMAKE_C_COMPILER=mpicc -DCMAKE_C_FLAGS="-O2 -fPIC" -DCMAKE_CXX_COMPILER=mpiicpx -DCMAKE_CXX_FLAGS="-O2 -fPIC" -DCMAKE_INSTALL_PREFIX=$INST -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF ..
   make -j16
   make install
   cd $WD
@@ -48,7 +48,7 @@ function install_dftd4 {
   cd dftd4-3.6.0
   rm -fr build
   mkdir build && cd build
-  cmake -DCMAKE_Fortran_COMPILER=ftn -DCMAKE_C_COMPILER=cc -DBLAS_LIBRARIES=$OLCF_OPENBLAS_ROOT/lib/libopenblas.so -DLAPACK_LIBRARIES=$OLCF_OPENBLAS_ROOT/lib/libopenblas.so -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$INST -DWITH_OpenMP=OFF ..
+  cmake -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DBLAS_LIBRARIES=$OLCF_OPENBLAS_ROOT/lib/libopenblas.so -DLAPACK_LIBRARIES=$OLCF_OPENBLAS_ROOT/lib/libopenblas.so -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$INST -DWITH_OpenMP=OFF ..
   make -j16
   make install
   cd $WD
@@ -63,7 +63,7 @@ function install_spglib {
   cd spglib
   rm -fr build
   mkdir -p build && cd build
-  cmake -DCMAKE_CXX_COMPILER=CC -DCMAKE_C_COMPILER=cc -DCMAKE_INSTALL_PREFIX=$INST ..
+  cmake -DCMAKE_CXX_COMPILER=mpiicpx -DCMAKE_C_COMPILER=mpicc -DCMAKE_INSTALL_PREFIX=$INST ..
   make -j16
   make install
   cd $WD
@@ -75,9 +75,10 @@ function install_p4est {
   mkdir p4est
   cd p4est
   wget https://p4est.github.io/release/p4est-2.8.6.tar.gz
-  wget https://raw.githubusercontent.com/dftfeDevelopers/dftfe/manual/p4est-setup-craycompiler.sh
+  #wget https://raw.githubusercontent.com/dftfeDevelopers/dftfe/manual/p4est-setup-craycompiler.sh
+  cp $WD/p4est-setup.sh $WD/src/p4est/p4est-setup-craycompiler.sh
   chmod u+x p4est-setup-craycompiler.sh
-  ./p4est-setup-craycompiler.sh p4est-2.8.6.tar.gz $INST
+  ./p4est-setup-craycompiler.sh p4est-2.8.6.tar.gz $WD/src/p4est_install
   cd $WD
  }
 
@@ -142,8 +143,9 @@ function install_elpa {
 
     rm -fr build
     mkdir build && cd build
-    ../configure CXX=hipcc CC=hipcc FC=ftn CFLAGS="-march=znver3 -fPIC -O2 -I$ROCM_PATH/include --amdgpu-target=gfx90a -I$MPICH_DIR/include" FCFLAGS="-march=znver3 -O2 -fPIC" CXXFLAGS="-std=c++17 -march=znver3 -fPIC -O2 -I$ROCM_PATH/include --amdgpu-target=gfx90a -I$MPICH_DIR/include" LIBS="-L$ROCM_PATH/lib -lamdhip64 -lrocblas -L$MPICH_DIR/lib -lmpi $CRAY_XPMEM_POST_LINK_OPTS -lxpmem $PE_MPICH_GTL_DIR_amd_gfx90a $PE_MPICH_GTL_LIBS_amd_gfx90a -L$INST/lib -lscalapack -L$OLCF_OPENBLAS_ROOT/lib -lopenblas -L$INST/lib64" --enable-amd-gpu --prefix=$INST --disable-sse -disable-sse-assembly --disable-avx --disable-avx2 --disable-avx512 --enable-c-tests=no --enable-option-checking=fatal --enable-shared --enable-cpp-tests=no --enable-hipcub
-#              --enable-gpu-streams=amd
+    #../configure CXX=hipcc CC=hipcc FC=ftn CFLAGS="-march=znver3 -fPIC -O2 -I$ROCM_PATH/include --amdgpu-target=gfx90a -I$MPICH_DIR/include" FCFLAGS="-march=znver3 -O2 -fPIC" CXXFLAGS="-std=c++17 -march=znver3 -fPIC -O2 -I$ROCM_PATH/include --amdgpu-target=gfx90a -I$MPICH_DIR/include" LIBS="-L$ROCM_PATH/lib -lamdhip64 -lrocblas -L$MPICH_DIR/lib -lmpi $CRAY_XPMEM_POST_LINK_OPTS -lxpmem $PE_MPICH_GTL_DIR_amd_gfx90a $PE_MPICH_GTL_LIBS_amd_gfx90a -L$INST/lib -lscalapack -L$OLCF_OPENBLAS_ROOT/lib -lopenblas -L$INST/lib64" --enable-amd-gpu --prefix=$INST --disable-sse -disable-sse-assembly --disable-avx --disable-avx2 --disable-avx512 --enable-c-tests=no --enable-option-checking=fatal --enable-shared --enable-cpp-tests=no --enable-hipcub
+#tdc++             --enable-gpu-streams=amd
+    ../configure --enable-openmp --enable-intel-gpu-backend=sycl --enable-intel-gpu-sycl-kernels --with-default-real-kernel=intel_gpu_sycl --with-default-complex-kernel=intel_gpu_sycl --with-INTEL-gpu-support-only FC=mpif90 CC=mpicc CXX=mpiicpx FCFLAGS="-fopenmp -O2 -lmpifort -lmpi" CFLAGS="-fopenmp -O2 -lmpi" CXXFLAGS="-fopenmp -O2 -fsycl -DMKL_LP64 -L${MKLROOT}/lib -Wl,--no-as-needed -lmpi -lmpicxx -lirc -lintlc -lmkl_blacs_intelmpi_lp64 -lmkl_scalapack_lp64 -lmkl_sycl_blas -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lsycl -lpthread -lm -ldl -lstdc++" --prefix=${WD}/elpa_install SCALAPACK_LDFLAGS="-DMKL_LP64 -L${MKLROOT}/lib -Wl,--no-as-needed -lmpi -lmpicxx -lirc -lintlc -lmkl_blacs_intelmpi_lp64 -lmkl_scalapack_lp64 -lmkl_sycl_blas -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lsycl -lpthread -lm -ldl -lstdc++" SCALAPACK_FCFLAGS="-DMKL_LP64 -L${MKLROOT}/lib -Wl,--no-as-needed -lmpi -lmpicxx -lirc -lintlc -lmkl_blacs_intelmpi_lp64 -lmkl_scalapack_lp64 -lmkl_sycl_blas -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lsycl -lpthread -lm -ldl" --without-threading-support-check-during-build --enable-c-tests=no --enable-cpp-tests=no --enable-option-checking=fatal --enable-shared --disable-mpi-module --disable-avx --disable-avx2 --disable-avx512 --disable-sse
     make -j16
     make install
     cd $WD
@@ -160,7 +162,7 @@ function install_kokkos {
   cd kokkos-4.3.00
   rm -fr build
   mkdir build && cd build
-  cmake -DCMAKE_C_COMPILER=cc -DCMAKE_C_FLAGS="-O2 -fPIC" -DCMAKE_CXX_COMPILER=CC -DCMAKE_CXX_FLAGS="-O2 -fPIC" -DCMAKE_INSTALL_PREFIX=$INST ..
+  cmake -DCMAKE_C_COMPILER=mpicc -DCMAKE_C_FLAGS="-O2 -fPIC" -DCMAKE_CXX_COMPILER=mpiicpx -DCMAKE_CXX_FLAGS="-O2 -fPIC" -DCMAKE_INSTALL_PREFIX=$INST ..
   make -j16
   make install
   cd $WD
@@ -179,8 +181,8 @@ function install_dealii {
   cd dealii-$ver
   rm -fr build
   mkdir build && cd build
-  cmake -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_FLAGS="-march=native -std=c++17" -DCMAKE_C_FLAGS=-march=native -DDEAL_II_ALLOW_PLATFORM_INTROSPECTION=OFF         -DDEAL_II_FORCE_BUNDLED_BOOST=OFF -DDEAL_II_WITH_TASKFLOW=OFF -DKOKKOS_DIR=$INST -DCMAKE_BUILD_TYPE=Release -DDEAL_II_CXX_FLAGS_RELEASE=-O2 -DCMAKE_C_COMPILER=cc -DCMAKE_CXX_COMPILER=CC -DCMAKE_Fortran_COMPILER=ftn -DDEAL_II_WITH_TBB=OFF -DDEAL_II_COMPONENT_EXAMPLES=OFF -DDEAL_II_WITH_MPI=ON -DDEAL_II_WITH_64BIT_INDICES=ON -DP4EST_DIR=$INST -DDEAL_II_WITH_LAPACK=ON -DLAPACK_DIR="$OLCF_OPENBLAS_ROOT;$INST" -DLAPACK_FOUND=true -DLAPACK_LIBRARIES="$OLCF_OPENBLAS_ROOT/lib/libopenblas.so" -DCMAKE_INSTALL_PREFIX=$INST ..
-  make -j16 
+  #cmake -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_FLAGS="-march=native -std=c++17" -DCMAKE_C_FLAGS=-march=native -DDEAL_II_ALLOW_PLATFORM_INTROSPECTION=OFF         -DDEAL_II_FORCE_BUNDLED_BOOST=OFF -DDEAL_II_WITH_TASKFLOW=OFF -DKOKKOS_DIR=$INST -DCMAKE_BUILD_TYPE=Release -DDEAL_II_CXX_FLAGS_RELEASE=-O2 -DCMAKE_C_COMPILER=cc -DCMAKE_CXX_COMPILER=CC -DCMAKE_Fortran_COMPILER=ftn -DDEAL_II_WITH_TBB=OFF -DDEAL_II_COMPONENT_EXAMPLES=OFF -DDEAL_II_WITH_MPI=ON -DDEAL_II_WITH_64BIT_INDICES=ON -DP4EST_DIR=$INST -DDEAL_II_WITH_LAPACK=ON -DLAPACK_DIR="$OLCF_OPENBLAS_ROOT;$INST" -DLAPACK_FOUND=true -DLAPACK_LIBRARIES="$OLCF_OPENBLAS_ROOT/lib/libopenblas.so" -DCMAKE_INSTALL_PREFIX=$INST ..
+  cmake -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_Fortran_COMPILER=gfortran -DMPI_C_COMPILER=mpicc -DMPI_CXX_COMPILER=mpicxx -DMPI_Fortran_COMPILER=mpif90 -DCMAKE_CXX_FLAGS="-march=native -std=c++17" -DCMAKE_C_FLAGS="-march=native -std=c++17" -DDEAL_II_CXX_FLAGS_RELEASE="-O2" -DDEAL_II_COMPONENT_EXAMPLES=OFF -DDEAL_II_WITH_MPI=ON -DDEAL_II_WITH_64BIT_INDICES=ON -DDEAL_II_WITH_TBB=OFF -DDEAL_II_WITH_TASKFLOW=OFF -DDEAL_II_FORCE_BUNDLED_BOOST=ON -DDEAL_II_ALLOW_PLATFORM_INTROSPECTION=OFF -DDEAL_II_WITH_P4EST=ON -DP4EST_DIR=$WD/src/p4est_install -DDEAL_II_WITH_LAPACK=ON -DLAPACK_DIR="-L${MKLROOT}/lib" -DLAPACK_FOUND=true -DLAPACK_LIBRARIES="-L${MKLROOT}/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl" -DLAPACK_INCLUDE_DIRS="${MKLROOT}/include" -DCMAKE_INSTALL_PREFIX=$WD/src/dealii_install .. 
   make install
   mv $INST/*.log $INST/share/deal.II/
   mv $INST/*.md $INST/share/deal.II/
@@ -228,15 +230,16 @@ function install_torch {
   cd $WD
 }
 
-function compile_dftfe_debug {
+function compile_dftfe {
   cd $WD/src
   if [ ! -z $1 ]; then
     branch=$1
   else
-    branch=KerkerTesting
+    branch=syclIntelGPUv2
   fi
   if [ ! -d dftfe_$branch ]; then
-    git clone -b $branch https://dsambit@bitbucket.org/dftfedevelopers/dftfe.git dftfe_$branch
+    git clone -b syclIntelGPUv2 https://rudrapanch@bitbucket.org/dftfedevelopers/dftfe.git dftfe_$branch
+    #git clone -b $branch https://dsambit@bitbucket.org/dftfedevelopers/dftfe.git dftfe_$branch
     cd dftfe_$branch
   else
     cd dftfe_$branch
@@ -247,23 +250,32 @@ function compile_dftfe_debug {
   SRC=$PWD
   mkdir build && cd build
 
-  dealiiDir=$INST
+  dealiiDir=$WD/src/dealii_install
   alglibDir=$INST/lib/alglib
   libxcDir=$INST
   spglibDir=$INST
   xmlIncludeDir=/usr/include/libxml2
   xmlLibDir=/usr/lib64
 
-  ELPA_PATH=$INST
+  ELPA_PATH=$WD/elpa_install
   DCCL_PATH=$ROCM_PATH
   TORCH_PATH=$INST/venv/lib/python3.9/site-packages
 
+  withGPU=ON
+  gpuLang="sycl"     # Use "cuda"/"hip"
+  gpuVendor="intel" # Use "nvidia/amd"
+  withGPUAwareMPI=OFF
+  withDCCL=OFF
+  withMDI=OFF
+  withTorch=OFF
+  withCustomizedDealii=OFF
   #Compiler options and flags
-  cxx_compiler=CC
-  cxx_flags="-march=znver3 -fPIC -I$MPICH_DIR/include -I$ROCM_PATH/include -I$ROCM_PATH/include/hip -I$ROCM_PATH/include/hipblas -I$ROCM_PATH/include/rocblas"
+  cxx_compiler=mpiicpx
+  cxx_flagsi="-march=znver3 -fPIC -I$MPICH_DIR/include -I$ROCM_PATH/include -I$ROCM_PATH/include/hip -I$ROCM_PATH/include/hipblas -I$ROCM_PATH/include/rocblas"
   cxx_flagsRelease=-O2 #sets DCMAKE_CXX_FLAGS_RELEASE
-  device_flags="-march=znver3 -O2 -munsafe-fp-atomics -I$MPICH_DIR/include -I$ROCM_PATH/include -I$ROCM_PATH/include/hip -I$ROCM_PATH/include/hipblas -I$ROCM_PATH/include/rocblas"
-  device_architectures=gfx90a
+  #device_flags="-march=znver3 -O2 -munsafe-fp-atomics -I$MPICH_DIR/include -I$ROCM_PATH/include -I$ROCM_PATH/include/hip -I$ROCM_PATH/include/hipblas -I$ROCM_PATH/include/rocblas"
+  device_flags="-fPIC -fsycl -fsycl-targets=amd_gpu_gfx90a -DMKL_LP64 -I${MKLROOT}/include  -L${MKLROOT}/lib -Wl,--no-as-needed -lmpi -lintlc -lmkl_lapack95_lp64 -lmkl_blacs_intelmpi_lp64 -lmkl_scalapack_lp64 -lmkl_sycl -lmkl_sycl_blas -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lsycl -lpthread -lm -ldl"
+  device_architectures=""
 
 
   # HIGHERQUAD_PSP option compiles with default or higher order
@@ -276,15 +288,43 @@ function compile_dftfe_debug {
 
   function cmake_real {
     mkdir -p real && cd real
-    cmake -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_COMPILER=$cxx_compiler -DCMAKE_CXX_FLAGS="$cxx_flags" -DCMAKE_CXX_FLAGS_RELEASE="$cxx_flagsRelease" -DCMAKE_BUILD_TYPE=$build_type -DDEAL_II_DIR=$dealiiDir -DALGLIB_DIR=$alglibDir -DLIBXC_DIR=$libxcDir -DSPGLIB_DIR=$spglibDir -DXML_LIB_DIR=$xmlLibDir -DXML_INCLUDE_DIR=$xmlIncludeDir -DWITH_MDI=OFF -DMDI_PATH= -DWITH_DCCL=OFF -DWITH_TORCH=OFF -DCMAKE_PREFIX_PATH="$ELPA_PATH;$DCCL_PATH;$TORCH_PATH" -DWITH_GPU=ON -DGPU_LANG=hip -DGPU_VENDOR=amd -DWITH_GPU_AWARE_MPI=OFF -DCMAKE_HIP_FLAGS="$device_flags" -DCMAKE_HIP_ARCHITECTURES=$device_architectures -DWITH_TESTING=OFF -DMINIMAL_COMPILE=OFF -DCMAKE_SHARED_LINKER_FLAGS="-L$ROCM_PATH/lib -lamdhip64 -L$MPICH_DIR/lib -lmpi $CRAY_XPMEM_POST_LINK_OPTS -lxpmem $PE_MPICH_GTL_DIR_amd_gfx90a $PE_MPICH_GTL_LIBS_amd_gfx90a" -DHIGHERQUAD_PSP=ON -DWITH_COMPLEX=OFF $1
-    make -j16
+    withComplex=OFF
+    #cmake -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_COMPILER=$cxx_compiler -DCMAKE_CXX_FLAGS="$cxx_flags" -DCMAKE_CXX_FLAGS_RELEASE="$cxx_flagsRelease" -DCMAKE_BUILD_TYPE=$build_type -DDEAL_II_DIR=$dealiiDir -DALGLIB_DIR=$alglibDir -DLIBXC_DIR=$libxcDir -DSPGLIB_DIR=$spglibDir -DXML_LIB_DIR=$xmlLibDir -DXML_INCLUDE_DIR=$xmlIncludeDir -DWITH_MDI=OFF -DMDI_PATH= -DWITH_DCCL=OFF -DWITH_TORCH=OFF -DCMAKE_PREFIX_PATH="$ELPA_PATH;$DCCL_PATH;$TORCH_PATH" -DWITH_GPU=ON -DGPU_LANG=hip -DGPU_VENDOR=amd -DWITH_GPU_AWARE_MPI=OFF -DCMAKE_HIP_FLAGS="$device_flags" -DCMAKE_HIP_ARCHITECTURES=$device_architectures -DWITH_TESTING=OFF -DMINIMAL_COMPILE=OFF -DCMAKE_SHARED_LINKER_FLAGS="-L$ROCM_PATH/lib -lamdhip64 -L$MPICH_DIR/lib -lmpi $CRAY_XPMEM_POST_LINK_OPTS -lxpmem $PE_MPICH_GTL_DIR_amd_gfx90a $PE_MPICH_GTL_LIBS_amd_gfx90a" -DHIGHERQUAD_PSP=ON -DWITH_COMPLEX=OFF $1
+    cmake -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_COMPILER=$cxx_compiler\
+	  -DCMAKE_CXX_FLAGS="$device_flags"\
+	  -DCMAKE_CXX_FLAGS_RELEASE="$cxx_flagsRelease" \
+	  -DCMAKE_BUILD_TYPE=$build_type -DDEAL_II_DIR=$dealiiDir \
+	  -DALGLIB_DIR=$alglibDir -DLIBXC_DIR=$libxcDir \
+	  -DSPGLIB_DIR=$spglibDir -DXML_LIB_DIR=$xmlLibDir \
+	  -DXML_INCLUDE_DIR=$xmlIncludeDir\
+	  -DWITH_MDI=$withMDI -DMDI_PATH=$mdiPath -DWITH_TORCH=$withTorch -DTORCH_DIR=$torchDir\
+	  -DWITH_CUSTOMIZED_DEALII=$withCustomizedDealii\
+	  -DWITH_DCCL=$withDCCL -DCMAKE_PREFIX_PATH="$ELPA_PATH;$DCCL_PATH;$dftdpath;$numdiffdir"\
+	  -DWITH_COMPLEX=$withComplex -DWITH_GPU=$withGPU -DGPU_LANG=$gpuLang -DGPU_VENDOR=$gpuVendor -DWITH_GPU_AWARE_MPI=$withGPUAwareMPI\
+	  -DWITH_TESTING=$testing -DMINIMAL_COMPILE=$minimal_compile\
+	  -DHIGHERQUAD_PSP=$withHigherQuadPSP $1
+    make -j8
     cd ..
   }
 
   function cmake_cplx {
     mkdir -p complex && cd complex
-    cmake -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_COMPILER=$cxx_compiler -DCMAKE_CXX_FLAGS="$cxx_flags" -DCMAKE_CXX_FLAGS_RELEASE="$cxx_flagsRelease" -DCMAKE_BUILD_TYPE=$build_type -DDEAL_II_DIR=$dealiiDir -DALGLIB_DIR=$alglibDir -DLIBXC_DIR=$libxcDir -DSPGLIB_DIR=$spglibDir -DXML_LIB_DIR=$xmlLibDir -DXML_INCLUDE_DIR=$xmlIncludeDir -DWITH_MDI=OFF -DMDI_PATH= -DWITH_DCCL=OFF -DWITH_TORCH=OFF -DCMAKE_PREFIX_PATH="$ELPA_PATH;$DCCL_PATH;$TORCH_PATH" -DWITH_GPU=ON -DGPU_LANG=hip -DGPU_VENDOR=amd -DWITH_GPU_AWARE_MPI=OFF -DCMAKE_HIP_FLAGS="$device_flags" -DCMAKE_HIP_ARCHITECTURES=$device_architectures -DWITH_TESTING=OFF -DMINIMAL_COMPILE=OFF -DCMAKE_SHARED_LINKER_FLAGS="-L$ROCM_PATH/lib -lamdhip64 -L$MPICH_DIR/lib -lmpi $CRAY_XPMEM_POST_LINK_OPTS -lxpmem $PE_MPICH_GTL_DIR_amd_gfx90a $PE_MPICH_GTL_LIBS_amd_gfx90a" -DHIGHERQUAD_PSP=ON -DWITH_COMPLEX=ON $1
-    make -j16
+    withComplex=ON
+    #cmake -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_COMPILER=$cxx_compiler -DCMAKE_CXX_FLAGS="$cxx_flags" -DCMAKE_CXX_FLAGS_RELEASE="$cxx_flagsRelease" -DCMAKE_BUILD_TYPE=$build_type -DDEAL_II_DIR=$dealiiDir -DALGLIB_DIR=$alglibDir -DLIBXC_DIR=$libxcDir -DSPGLIB_DIR=$spglibDir -DXML_LIB_DIR=$xmlLibDir -DXML_INCLUDE_DIR=$xmlIncludeDir -DWITH_MDI=OFF -DMDI_PATH= -DWITH_DCCL=OFF -DWITH_TORCH=OFF -DCMAKE_PREFIX_PATH="$ELPA_PATH;$DCCL_PATH;$TORCH_PATH" -DWITH_GPU=ON -DGPU_LANG=hip -DGPU_VENDOR=amd -DWITH_GPU_AWARE_MPI=OFF -DCMAKE_HIP_FLAGS="$device_flags" -DCMAKE_HIP_ARCHITECTURES=$device_architectures -DWITH_TESTING=OFF -DMINIMAL_COMPILE=OFF -DCMAKE_SHARED_LINKER_FLAGS="-L$ROCM_PATH/lib -lamdhip64 -L$MPICH_DIR/lib -lmpi $CRAY_XPMEM_POST_LINK_OPTS -lxpmem $PE_MPICH_GTL_DIR_amd_gfx90a $PE_MPICH_GTL_LIBS_amd_gfx90a" -DHIGHERQUAD_PSP=ON -DWITH_COMPLEX=ON $1
+    cmake -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_COMPILER=$cxx_compiler\
+	        -DCMAKE_CXX_FLAGS="$device_flags"\
+		    -DCMAKE_CXX_FLAGS_RELEASE="$cxx_flagsRelease" \
+		        -DCMAKE_BUILD_TYPE=$build_type -DDEAL_II_DIR=$dealiiDir \
+			    -DALGLIB_DIR=$alglibDir -DLIBXC_DIR=$libxcDir \
+			        -DSPGLIB_DIR=$spglibDir -DXML_LIB_DIR=$xmlLibDir \
+				    -DXML_INCLUDE_DIR=$xmlIncludeDir\
+				        -DWITH_MDI=$withMDI -DMDI_PATH=$mdiPath -DWITH_TORCH=$withTorch -DTORCH_DIR=$torchDir\
+					    -DWITH_CUSTOMIZED_DEALII=$withCustomizedDealii\
+					        -DWITH_DCCL=$withDCCL -DCMAKE_PREFIX_PATH="$ELPA_PATH;$DCCL_PATH;$dftdpath;$numdiffdir"\
+						    -DWITH_COMPLEX=$withComplex -DWITH_GPU=$withGPU -DGPU_LANG=$gpuLang -DGPU_VENDOR=$gpuVendor -DWITH_GPU_AWARE_MPI=$withGPUAwareMPI\
+						        -DWITH_TESTING=$testing -DMINIMAL_COMPILE=$minimal_compile\
+							    -DHIGHERQUAD_PSP=$withHigherQuadPSP $1
+    make -j8
     cd ..
   }
 
@@ -294,8 +334,8 @@ function compile_dftfe_debug {
   echo Building Real executable in $build_type mode...
   cmake_real $SRC
 
-  echo Building Complex executable in $build_type mode...
-  cmake_cplx $SRC
+  #echo Building Complex executable in $build_type mode...
+  #cmake_cplx $SRC
 
   echo Build complete.
   cd $WD
@@ -303,7 +343,7 @@ function compile_dftfe_debug {
 
 
 
-function compile_dftfe {
+function compile_dftfe_debug {
   cd $WD/src
   if [ ! -z $1 ]; then
     branch=$1
